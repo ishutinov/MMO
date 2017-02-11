@@ -1,0 +1,10 @@
+{
+  "socket_protocol":"http",
+  "socket_domain":"localhost",
+  "socket_port":6666,
+  "debug_level": "debug",
+  "nb_players": 50,
+  "update_rate": 33,
+  "cmd_rate":32,
+  "max_buffer":64
+}
