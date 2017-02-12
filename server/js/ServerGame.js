@@ -59,23 +59,56 @@
 		        self.tick();
 		    }, this._intervalTargetDelta);
 		},
+/*
+ //this is equivalent to tick
+ SceneManager.updateMain = function() {
 
+ var newTime = new Date().getTime();
+ var delta = (newTime - this._currentTime);
+ this._currentTime = newTime;
+
+
+ //封顶
+ if (delta > intervalTargetDelta) delta = intervalTargetDelta;
+
+ this._accumulator += delta;
+ //------------- Client Tick -------------------------------
+ while (this._accumulator >= intervalTargetDelta) {
+ this.updateInputData(); // While the frame accumulator is greater than the logic update delta, we keep updating the game's logic and catching input
+ this.changeScene();
+ this.updateScene();
+ $clientMannager.tick(); // this is basically updating net scene
+ this._accumulator -= intervalTargetDelta;
+
+
+ }
+ //-------------------------------------------------------
+ $clientMannager.renderAtTime($clientMannager._gameClock - 75);
+ //console.log($gameMap && $gameMap._events[1] && $gameMap._events[1]._realX);
+ //render at different frame
+ this.renderScene();
+ this.requestUpdate();
+ };
+ */
 		tick: function() {
+
 		    // Store previous time and update current
 		    var oldTime = this._gameClockReal;
 		    this._gameClockReal = new Date().getTime();
 
 		    // Our clock is zero based, so if for example it says 10,000 - that means the game started 10 seconds ago
 		    var delta = this._gameClockReal - oldTime;
+		    //封顶
+            if (delta > 16) delta = 16;
 		    //console.log(delta);
 		    this._gameClock += delta;
 		    this._gameTick++;
 
 		    // Framerate Independent Motion -
 		    // 1.0 means running at exactly the correct speed, 0.5 means half-framerate. (otherwise faster machines which can update themselves more accurately will have an advantage)
-		    var speedFactor = delta /  this._intervalTargetDelta ;
-		    if (speedFactor <= 0) speedFactor = 1;
-		    //console.log(speedFactor);
+		    // var speedFactor = delta /  this._intervalTargetDelta ;
+		    // if (speedFactor <= 0) speedFactor = 1;
+		    // console.log(speedFactor);
 
             // Allow all _entities to update their position
 			var gameMap = DataManager.getGameMaps();
@@ -86,9 +119,9 @@
 		    this._netChannel.tick(this._gameClock,worldEntityDescription);
 
 
-            // if (this._gameClock > this._gameDuration) {
-            //     //this.shouldEndGame();
-            // }
+            if (this._gameClock > this._gameDuration) {
+                //this.shouldEndGame();
+            }
 
 		},
 
@@ -139,6 +172,8 @@
     Game_Event.prototype.constructEntityDescription = function (gameTick, wantsFullUpdate) {
         var returnString = Game_CharacterBase.prototype.constructEntityDescription.call(this,gameTick, wantsFullUpdate);
         returnString += "," + this._eventId;
+        returnString += "," + this._direction;
+        returnString += "," + this._pattern;
         return returnString;
     };
 

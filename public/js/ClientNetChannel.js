@@ -52,14 +52,11 @@
             aNetChannelMessage 中的数据是： 服务器的游戏时钟
         */
         onSocketDidAcceptConnection: function (aNetChannelMessage) {
-
-            console.log("(ClientNetChannel)::onSocketDidAcceptConnection", aNetChannelMessage);
             //设置自己的Client ID，同时通知游戏服务器 运行 log 函数
             this._clientid = aNetChannelMessage.id;
             this._delegate.log("(ClientNetChannel)::ClientID - " + this._clientid);
             //通知游戏服务器 运行 netChannelDidConnect 函数
             this._delegate.netChannelDidConnect(aNetChannelMessage);
-
         },
 
         onSocketDisconnect: function () {
@@ -80,6 +77,8 @@
 
             this._lastRecievedTime = this._delegate.getGameClock();
             this.adjustRate(aNetChannelMessage);
+
+            //console.log(this._incomingWorldUpdateBuffer);
 
             // if (aNetChannelMessage.id == this._clientid) // We sent this, clear our reliable buffer que
             // {
@@ -162,23 +161,10 @@
                 //this is a stored-look-up date
                 var worldEntityDescription = this.createWorldEntityDescriptionFromString(singleWorldUpdate);
 
-                //TEMP
-                if ($gameMap){
-                    worldEntityDescription.forEach(function (key,value) {
-                        //console.log($gameMap._events[value._eventId]);
-                        if( $gameMap._events[value._eventId]){
-                       $gameMap._events[value._eventId]._realX = value._realX;
-                       $gameMap._events[value._eventId]._realY = value._realY;
-                        }
-                    },this);
-                }
-
                 // Add it to the incommingCmdBuffer and drop oldest element
                 this._incomingWorldUpdateBuffer.push(worldEntityDescription);
                 if (this._incomingWorldUpdateBuffer.length > BUFFER_MASK)
                     this._incomingWorldUpdateBuffer.shift();
-
-                //console.log(this._incomingWorldUpdateBuffer.length);
 
             }
         },
@@ -220,6 +206,12 @@
 
             var deltaTime = serverMessage._gameClock - this._delegate.getGameClock();
             this._latency = deltaTime;
+
+            if (this._latency > 100){
+                this._delegate.setGameClock(serverMessage._gameClock);
+            }
+
+
             //console.log(this._latency);
         },
 
@@ -269,6 +261,7 @@
             getGameClock:function () {},
             netChannelDidConnect:function(data) {},
             netChannelDidDisconnect:function() {},
+            parseEntityDescriptionArray:function () {},
             log:function (data) {}
         }
 

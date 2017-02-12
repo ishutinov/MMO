@@ -81,7 +81,7 @@ require("./lib/SortedLookupTable.js");
         ,
 
         tick: function (gameClock, worldDescription) {
-            
+            //console.log(gameClock);
             var worldEntityDescriptionString = worldDescription.getEntityDescriptionAsString();
             var entityDescriptionObject = {
                 _entities: worldEntityDescriptionString,
