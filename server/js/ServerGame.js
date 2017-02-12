@@ -5,7 +5,7 @@
     //requires
     require("./ServerNetChannel");
 	require("./lib/JsExtensions.js");
-	require("./worldEntityDescription.js");
+	require("./WorldEntityDescription.js");
 	require("./ServerObjects.js");
 
     /**
@@ -46,14 +46,14 @@
 
 
 		setupNetChannel:function () {
-
+            // create a ServerNetChannel object
 			this._netChannel = new ServerNetChannel(this);
 		},
 
 		startGameClock: function() {
 			var self = this;
 		    this._gameClockReal = new Date().getTime();
-		    this._intervalTargetDelta = Math.floor(1000 / this.intervalFramerate);
+		    this._intervalTargetDelta = Math.floor(1000 / this._intervalFramerate);
 		    //start the interval
 		    this._intervalGameTick = setInterval(function () {
 		        self.tick();
@@ -73,36 +73,22 @@
 
 		    // Framerate Independent Motion -
 		    // 1.0 means running at exactly the correct speed, 0.5 means half-framerate. (otherwise faster machines which can update themselves more accurately will have an advantage)
-		    var speedFactor = delta / ( this._intervalTargetDelta );
+		    var speedFactor = delta /  this._intervalTargetDelta ;
 		    if (speedFactor <= 0) speedFactor = 1;
-		    
+		    //console.log(speedFactor);
 
-		    //temp world description
-		    var worldEntityDescription = {
-		        gameClock:this._gameClock,
-		        gameTick:this._gameTick
-		    };
-
-
-            // Allow all entities to update their position
-            //$gameMap.update();
-            //console.log($gameMap._events[1]._realX+", "+$gameMap._events[1]._realY);
+            // Allow all _entities to update their position
+			var gameMap = DataManager.getGameMaps();
+            gameMap.update();
 
             // Create a new world-entity-description,
-            var worldEntityDescription = new WorldEntityDescription(this, this.getEntities());
-
-		    //channel update
+            var worldEntityDescription = new WorldEntityDescription(this, gameMap._events);
 		    this._netChannel.tick(this._gameClock,worldEntityDescription);
 
-            if (this._gameClock > this._gameDuration) {
-                //this.shouldEndGame();
-            }
 
-		},
-		//TEMP TEST
-		getEntities: function () {
-
-            return [];
+            // if (this._gameClock > this._gameDuration) {
+            //     //this.shouldEndGame();
+            // }
 
 		},
 
@@ -135,6 +121,26 @@
 
 
 	};
+
+
+    /**
+     * Construct an entity description for this object, it is essentually a CSV so you have to know how to read it on the receiving end
+     * @param wantsFullUpdate    If true, certain things that are only sent when changed are always sent
+     */
+    Game_CharacterBase.prototype.constructEntityDescription = function (gameTick, wantsFullUpdate) {
+        // Note: "~~" is just a way to round the value without the Math.round function call
+        //var returnString = this._mapId;//this.entityid;
+        //returnString += "," + this._eventId;
+        var returnString = this._realX;
+        returnString += "," + this._realY;
+
+        return returnString;
+    };
+    Game_Event.prototype.constructEntityDescription = function (gameTick, wantsFullUpdate) {
+        var returnString = Game_CharacterBase.prototype.constructEntityDescription.call(this,gameTick, wantsFullUpdate);
+        returnString += "," + this._eventId;
+        return returnString;
+    };
 
 //---------------------------------The End--------------------------------------------------------
 })();

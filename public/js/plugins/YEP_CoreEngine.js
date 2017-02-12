@@ -826,36 +826,6 @@ SceneManager.openConsole = function() {
     }
 };
 
-//=============================================================================
-// BattleManager
-//=============================================================================
-
-Yanfly.Core.BattleManager_displayStartMessages =
-    BattleManager.displayStartMessages;
-BattleManager.displayStartMessages = function() {
-  Yanfly.Core.BattleManager_displayStartMessages.call(this);
-  $gameTroop.members().forEach(function(enemy) {
-      enemy.recoverAll();
-  });
-};
-
-BattleManager.processEscape = function() {
-    $gameParty.performEscape();
-    SoundManager.playEscape();
-    var success = this._preemptive ? true : (Math.random() < this._escapeRatio);
-    if (success) {
-        $gameParty.removeBattleStates();
-        this.displayEscapeSuccessMessage();
-        this._escaped = true;
-        this.processAbort();
-    } else {
-        this.displayEscapeFailureMessage();
-        this._escapeRatio += 0.1;
-        $gameParty.clearActions();
-        this.startTurn();
-    }
-    return success;
-};
 
 //=============================================================================
 // Scene_Title
@@ -997,63 +967,6 @@ Sprite_Button.prototype.isButtonTouched = function() {
     return x >= 0 && y >= 0 && x < this.width && y < this.height;
 };
 
-//=============================================================================
-// Spriteset_Battle
-//=============================================================================
-
-if (eval(Yanfly.Param.ScaleBattleback)) {
-
-Yanfly.Core.Spriteset_Battle_locateBattleback =
-    Spriteset_Battle.prototype.locateBattleback;
-Spriteset_Battle.prototype.locateBattleback = function() {
-    var sprite1 = this._back1Sprite;
-    var sprite2 = this._back2Sprite;
-    if (sprite1.bitmap.width <= 0) return;
-    if (sprite2.bitmap.width <= 0) return;
-    if (this._rescaledBattlebackSprite) return;
-    this._rescaledBattlebackSprite = true;
-    Yanfly.Core.Spriteset_Battle_locateBattleback.call(this);
-    this.rescaleBattlebacks();
-};
-
-Spriteset_Battle.prototype.rescaleBattlebacks = function() {
-    this.rescaleBattlebackSprite(this._back1Sprite);
-    this.rescaleBattlebackSprite(this._back2Sprite);
-};
-
-Spriteset_Battle.prototype.rescaleBattlebackSprite = function(sprite) {
-  if (sprite.bitmap.width <= 0 || sprite.bitmap <= 0) return;
-  var width = Graphics.boxWidth;
-  var height = Graphics.boxHeight;
-  var ratioX = width / sprite.bitmap.width;
-  var ratioY = height / sprite.bitmap.height;
-  if (ratioX > 1.0) {
-    sprite.scale.x = ratioX;
-    sprite.anchor.x = 0.5;
-    sprite.x = width / 2;
-  }
-  if (ratioY > 1.0) {
-    sprite.scale.y = ratioY;
-    sprite.origin.y = 0;
-    sprite.y = 0;
-  }
-};
-
-}; // Yanfly.Param.ScaleBattleback
-
-//=============================================================================
-// Game_BattlerBase
-//=============================================================================
-
-Game_BattlerBase.prototype.paramMax = function(paramId) {
-    if (paramId === 0) {
-        return Yanfly.Param.EnemyMaxHp;
-    } else if (paramId === 1) {
-        return Yanfly.Param.EnemyMaxMp;
-    } else {
-        return Yanfly.Param.EnemyParam;
-    }
-};
 
 //=============================================================================
 // Game_Actor

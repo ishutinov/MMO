@@ -5,68 +5,70 @@
 
 
     Client = function (aConnection, aClientid) {
-        this.clientid = aClientid;
-        this.connection = aConnection;
-        if (!this.connection.id) { // No sessionId variable means we're not using socket.io - just set that property to use our clientid
-            this.connection.id = aClientid;
+        this._clientid = aClientid;
+        this._connection = aConnection;
+        if (!this._connection.id) { // No sessionId variable means we're not using socket.io - just set that property to use our _clientid
+            this._connection.id = aClientid;
         }
-        this.stagnantEntities = new SortedLookupTable();
+        this._stagnantEntities = new SortedLookupTable();
         return this;
 
     };
 
     Client.prototype = {
-        connection: null,				// SocketIO connection for this specific client
-        clientid: -1,				// UUID for this client
+        _connection: null,				// SocketIO _connection for this specific client
+        _clientid: -1,				// UUID for this client
         // Configuration
-        cl_updateRate: Math.round(1000 / 30),		// How often we can receive messages per sec
-        outgoingMessageBuffer: [],				// Store array of incoming messages, slots are resused
+        _cl_updateRate: Math.round(1000 / 30),		// How often we can receive messages per sec
+        _outgoingMessageBuffer: [],				// Store array of incoming messages, slots are resused
         _outgoingSequenceNumber: 0,                // Number of total outgoing messages received
-        incomingMessageBuffer: [],              	// Store array of incoming messages, slots are resused
-        incomingSequenceNumber: 0,                // Number of total incoming messages received
-        entityDescriptionBuffer: [],				// Store WorldEntityDescriptions before ready to send
+        _incomingMessageBuffer: [],              	// Store array of incoming messages, slots are resused
+        _incomingSequenceNumber: 0,                // Number of total incoming messages received
+        _entityDescriptionBuffer: [],				// Store WorldEntityDescriptions before ready to send
 
         // Used to track if we can send a new message to this user
-        lastSentMessageTime: -1,
-        lastReceivedMessageTime: -1,
+        _lastSentMessageTime: -1,
+        _lastReceivedMessageTime: -1,
 
         // Entries that have not changed since the last frame
-        stagnantEntities: null,
+        _stagnantEntities: null,
 
         /**
             
         */
         onMessage: function (messageData) {
 
-            var messageIndex = this.incomingSequenceNumber & this.cl_updateRate;
-			this.incomingMessageBuffer[messageIndex] = messageData;
-            this.incomingSequenceNumber++;
+            var messageIndex = this._incomingSequenceNumber & this._cl_updateRate;
+			this._incomingMessageBuffer[messageIndex] = messageData;
+            this._incomingSequenceNumber++;
         },
         /**
             release memory
         */
         dealloc: function () {
-            this.outgoingMessageBuffer = null;
-            this.incomingMessageBuffer = null;
-            this.entityDescriptionBuffer = null;
-            this.stagnantEntities.dealloc();
-            this.stagnantEntities = null;
-            this.connection.removeAllListeners();
-            this.connection = null;
+            this._outgoingMessageBuffer = null;
+            this._incomingMessageBuffer = null;
+            this._entityDescriptionBuffer = null;
+            this._stagnantEntities.dealloc();
+            this._stagnantEntities = null;
+            this._connection.removeAllListeners();
+            this._connection = null;
         },
 
         /**
          * Compares the worldDescription to the last one we sent - removes unchanged values
-         * @param worldDescription A description of all the entities currently in the world
+         * @param worldDescription A description of all the _entities currently in the world
          * @param gameClock           The current (zero-based) game clock
          */
         compressDeltaAndQueueMessage: function (worldDescription, gameClock) {
             debugger;
-            var allEntities = worldDescription.entities,
+            var allEntities = worldDescription._entities,
                 len = allEntities.length;
 
             var resultDescStr = '';
             while (len--) {
+                if (!allEntities[len]) continue;
+
                 var anEntityDescStr = allEntities[len],
                     anEntityDesc = anEntityDescStr.split(','),
                     entityid = +anEntityDesc[0],
@@ -75,7 +77,7 @@
 
                 var hasNewData = true;
                 if (clientid == RealtimeMultiplayerGame.Constants.SERVER_SETTING.CLIENT_ID) {
-                    var previouslySentEntityDescription = this.stagnantEntities.objectForKey(entityid);
+                    var previouslySentEntityDescription = this._stagnantEntities.objectForKey(entityid);
                     if (previouslySentEntityDescription) {
                         // hasNewData = false;
                     }
@@ -90,11 +92,11 @@
                 }
             }
             var entityDescriptionObject = {};
-            entityDescriptionObject.entities = resultDescStr;
-            entityDescriptionObject.gameClock = worldDescription.gameClock;
-            entityDescriptionObject.gameTick = worldDescription.gameTick;
+            entityDescriptionObject._entities = resultDescStr;
+            entityDescriptionObject._gameClock = worldDescription._gameClock;
+            entityDescriptionObject._gameTick = worldDescription._gameTick;
 
-            this.entityDescriptionBuffer.push(entityDescriptionObject);
+            this._entityDescriptionBuffer.push(entityDescriptionObject);
         },
 
         /**
@@ -102,25 +104,25 @@
         */
         sendQueuedCommands: function (gameClock) {
             var messageContent = {
-                gameClock: gameClock,
-                id: this.clientid,
-                seq: this.outgoingSequenceNumber,
-                data: this.entityDescriptionBuffer
+                _gameClock: gameClock,
+                id: this._clientid,
+                seq: this._outgoingSequenceNumber,
+                data: this._entityDescriptionBuffer
             };
             var anEncodedMessage = messageContent;	// Encode?
             //send
             this.sendMessage(anEncodedMessage, gameClock);
             //clear
-            this.entityDescriptionBuffer = [];
+            this._entityDescriptionBuffer = [];
         },
         /**
             
         */
         sendMessage: function (anEncodedMessage, gameClock) {
-            this.lastSentMessageTime = gameClock;
+            this._lastSentMessageTime = gameClock;
             // Send and increment our message count
-            this.connection.emit('message',anEncodedMessage);
-            this.outgoingSequenceNumber++;
+            this._connection.emit('message',anEncodedMessage);
+            this._outgoingSequenceNumber++;
         },
 
 ///// ACCESSORS
@@ -129,7 +131,7 @@
          * @param {Number} gameClock
          */
         canSendMessage: function (gameClock) {
-            return (gameClock - this.lastSentMessageTime) > this.cl_updateRate;
+            return (gameClock - this._lastSentMessageTime) > this._cl_updateRate;
         },
 
         /**
@@ -137,7 +139,7 @@
          * @return {String} A hash representing the session id
          */
         getSessionId: function () {
-            return this.connection.id;
+            return this._connection.id;
         },
 
         /**
@@ -145,11 +147,11 @@
          * This is used instead of sessionid since we send this around a lot and sessionid is a 12 digit string
          */
         getClientid: function () {
-            return this.clientid;
+            return this._clientid;
         },
 
         getConnection: function () {
-            return this.connection;
+            return this._connection;
         }
 
     };

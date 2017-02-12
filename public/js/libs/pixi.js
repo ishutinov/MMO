@@ -2095,7 +2095,7 @@ function findHoleBridge(hole, outerNode) {
         m;
 
     // find a segment intersected by a ray from the hole's leftmost point to the left;
-    // segment's endpoint with lesser x will be potential connection point
+    // segment's endpoint with lesser x will be potential _connection point
     do {
         if (hy <= p.y && hy >= p.next.y) {
             var x = p.x + (hy - p.y) * (p.next.x - p.x) / (p.next.y - p.y);
@@ -2116,8 +2116,8 @@ function findHoleBridge(hole, outerNode) {
     if (hx === qx) return m.prev; // hole touches outer segment; pick lower endpoint
 
     // look for points inside the triangle of hole point, segment intersection and endpoint;
-    // if there are no points found, we have a valid connection;
-    // otherwise choose the point of the minimum angle with the ray as connection point
+    // if there are no points found, we have a valid _connection;
+    // otherwise choose the point of the minimum angle with the ray as _connection point
 
     var stop = m,
         mx = m.x,

@@ -6,26 +6,27 @@
     ClientNetChannel = function (aDelegate) {
         this.setDelegate(aDelegate);
         this.setupSocketIO();
+
     };
 
     ClientNetChannel.prototype = {
         _delegate: null,				// Object informed when ClientNetChannel does interesting stuff
         _socketio: null,				// Reference to singluar Socket.IO instance
-        clientid: null,				// A client id is set by the server on first connect
+        _clientid: null,				// A client id is set by the server on first connect
         // Settings
-        cl_updateRate:33,
-        // connection info
-        latency: 1000,				// Current latency time from server
-        lastSentTime: -1,				// Time of last sent message
-        lastRecievedTime: -1,				// Time of last recieved message
+        _cl_updateRate:33,
+        // _connection info
+        _latency: 1000,				// Current _latency time from server
+        _lastSentTime: -1,				// Time of last sent message
+        _lastRecievedTime: -1,				// Time of last recieved message
         // Data
-        messageBuffer: [],				// Store last N messages to be sent
+        _messageBuffer: [],				// Store last N messages to be sent
         _outgoingSequenceNumber: 0,
-        incomingWorldUpdateBuffer: [],				// Store last N received WorldDescriptions
-        reliableBuffer: null,				// We sent a 'reliable' message and are waiting for acknowledgement that it was sent
+        _incomingWorldUpdateBuffer: [],				// Store last N received WorldDescriptions
+        _reliableBuffer: null,				// We sent a 'reliable' message and are waiting for acknowledgement that it was sent
 
         setupSocketIO: function () {
-            this._socketio = io.connect("http://localhost:6666");
+            this._socketio = io.connect("http://localhost:6666",{transports: ['websocket', 'xhr-polling', 'jsonp-polling'], reconnect: false, rememberTransport: false});
             var self = this;
             this._socketio.on('connect', function(){
                 self.onSocketConnect();
@@ -43,7 +44,6 @@
 
         },
 
-        ///// SocketIO Callbacks
         onSocketConnect: function () {
             console.log("(ClientNetChannel):onSocketConnect", arguments, this._socketio);
         },
@@ -55,48 +55,53 @@
 
             console.log("(ClientNetChannel)::onSocketDidAcceptConnection", aNetChannelMessage);
             //设置自己的Client ID，同时通知游戏服务器 运行 log 函数
-            this.clientid = aNetChannelMessage.id;
-            this.delegate.log("(ClientNetChannel)::ClientID - " + this.clientid);
+            this._clientid = aNetChannelMessage.id;
+            this._delegate.log("(ClientNetChannel)::ClientID - " + this._clientid);
             //通知游戏服务器 运行 netChannelDidConnect 函数
-            this.delegate.netChannelDidConnect(aNetChannelMessage);
+            this._delegate.netChannelDidConnect(aNetChannelMessage);
 
         },
 
         onSocketDisconnect: function () {
             //通知游戏服务器 运行 netChannelDidDisconnect 函数
-            this.delegate.netChannelDidDisconnect();
-            this.connection = null;
+            this._delegate.netChannelDidDisconnect();
+            this._connection = null;
             this._socketio = null;
             console.log("(ClientNetChannel)::onSocketDisconnect", arguments);
         },
 
         onSocketMessage: function (aNetChannelMessage) {
 
-            //console.log(aNetChannelMessage.gameClock);
-            this.lastReceivedTime = this.delegate.getGameClock();
+            // aNetChannelMessage.data.forEach(function (messageContent) {
+            //     console.log(messageContent._gameClock+" ("+messageContent._gameTick+"): "+messageContent._entities);
+            // });
+            //console.log(aNetChannelMessage.data);
+            //console.log(this._latency);
 
+            this._lastRecievedTime = this._delegate.getGameClock();
             this.adjustRate(aNetChannelMessage);
 
-            if (aNetChannelMessage.id == this.clientid) // We sent this, clear our reliable buffer que
-            {
+            // if (aNetChannelMessage.id == this._clientid) // We sent this, clear our reliable buffer que
+            // {
+            //
+            //     //I got it!
+            //     var messageIndex = aNetChannelMessage.seq & BUFFER_MASK;
+            //     var message = this._messageBuffer[messageIndex];
+            //
+            //     // Free up reliable buffer to allow for new message to be sent
+            //     if (this._reliableBuffer === message) {
+            //         this._reliableBuffer = null;
+            //     }
+            //
+            //     // Remove from memory
+            //     this._messageBuffer[messageIndex] = null;
+            //     delete message;
+            //
+            //     return;
+            // }
 
-                //I got it!
-                var messageIndex = aNetChannelMessage.seq & BUFFER_MASK;
-                var message = this.messageBuffer[messageIndex];
+            this.onServerWorldUpdate(aNetChannelMessage);
 
-                // Free up reliable buffer to allow for new message to be sent
-                if (this.reliableBuffer === message) {
-                    this.reliableBuffer = null;
-                }
-
-                // Remove from memory
-                this.messageBuffer[messageIndex] = null;
-                delete message;
-
-                return;
-            }
-
-            //$gamePlayer.locate((i++)%40,22);
             // // Call the mapped function
             // if (this.cmdMap[aNetChannelMessage.cmd])
             //     this.cmdMap[aNetChannelMessage.cmd].call(this, aNetChannelMessage);
@@ -114,12 +119,12 @@
                 return;      //some error here
             }
             
-            aMessageInstance.messageTime = this.delegate.getGameClock(); // Store to determine latency
+            aMessageInstance.messageTime = this._delegate.getGameClock(); // Store to determine _latency
             
-            this.lastSentTime = this.delegate.getGameClock();
+            this._lastSentTime = this._delegate.getGameClock();
             
             if (aMessageInstance.isReliable) {
-                this.reliableBuffer = aMessageInstance; // Block new connections
+                this._reliableBuffer = aMessageInstance; // Block new connections
             }
             
             this._socketio.emit('message',aMessageInstance);
@@ -129,19 +134,54 @@
 
         addMessageToQueue: function (isReliable, payload) {
             // Create a NetChannelMessage
-            var message = new RealtimeMultiplayerGame.model.NetChannelMessage(this.outgoingSequenceNumber, this.clientid, isReliable, payload);
+            var message = new RealtimeMultiplayerGame.model.NetChannelMessage(this._outgoingSequenceNumber, this._clientid, isReliable, payload);
 
             // Add to array the queue using bitmask to wrap values
-            this.messageBuffer[ this.outgoingSequenceNumber & BUFFER_MASK ] = message;
+            this._messageBuffer[ this._outgoingSequenceNumber & BUFFER_MASK ] = message;
 
             if (!isReliable) {
-                this.nextUnreliable = message;
+                this._nextUnreliable = message;
             }
 
-            ++this.outgoingSequenceNumber;
+            ++this._outgoingSequenceNumber;
 
         },
 
+        /**
+         *
+         * @param aNetChannelMessage
+         */
+        onServerWorldUpdate: function (aNetChannelMessage) {
+            var len = aNetChannelMessage.data.length;
+            var i = -1;
+
+            // Store all world updates contained in the message.
+            while (++i < len) // Want to parse through them in correct order, so no fancy --len
+            {
+                var singleWorldUpdate = aNetChannelMessage.data[i];
+                //this is a stored-look-up date
+                var worldEntityDescription = this.createWorldEntityDescriptionFromString(singleWorldUpdate);
+
+                //TEMP
+                if ($gameMap){
+                    worldEntityDescription.forEach(function (key,value) {
+                        //console.log($gameMap._events[value._eventId]);
+                        if( $gameMap._events[value._eventId]){
+                       $gameMap._events[value._eventId]._realX = value._realX;
+                       $gameMap._events[value._eventId]._realY = value._realY;
+                        }
+                    },this);
+                }
+
+                // Add it to the incommingCmdBuffer and drop oldest element
+                this._incomingWorldUpdateBuffer.push(worldEntityDescription);
+                if (this._incomingWorldUpdateBuffer.length > BUFFER_MASK)
+                    this._incomingWorldUpdateBuffer.shift();
+
+                //console.log(this._incomingWorldUpdateBuffer.length);
+
+            }
+        },
         /**
          * Takes a WorldUpdateMessage that contains the information about all the elements inside of a string
          * and creates SortedLookupTable out of it with the entityid's as the keys
@@ -150,22 +190,22 @@
         createWorldEntityDescriptionFromString: function (aWorldUpdateMessage) {
             // Create a new WorldEntityDescription and store the clock and gametick in it
             var worldDescription = new SortedLookupTable();
-            worldDescription.gameTick = aWorldUpdateMessage.gameTick;
-            worldDescription.gameClock = aWorldUpdateMessage.gameClock;
+            worldDescription.gameTick = aWorldUpdateMessage._gameTick;
+            worldDescription.gameClock = aWorldUpdateMessage._gameClock;
 
 
-            var allEntities = aWorldUpdateMessage.entities.split('|'),
-                allEntitiesLen = allEntities.length; //
+            var allEntities = aWorldUpdateMessage._entities.split('|'),
+                allEntitiesLen = allEntities.length;
 
             // Loop through each entity
-            while (--allEntitiesLen)   // allEntities[0] is garbage, so by using prefix we avoid it
+            while (--allEntitiesLen)   // _allEntities[0] is garbage, so by using prefix we avoid it
             {
-                // Loop through the string representing the entities properties
+                // Loop through the string representing the _entities properties
                 var entityDescAsArray = allEntities[allEntitiesLen].split(',');
-                var entityDescription = this.delegate.parseEntityDescriptionArray(entityDescAsArray);
+                var entityDescription = this._delegate.parseEntityDescriptionArray(entityDescAsArray);
 
                 // Store the final result using the entityid
-                worldDescription.setObjectForKey(entityDescription, entityDescription.entityid);
+                worldDescription.setObjectForKey(entityDescription, entityDescription._eventId);
             }
 
 
@@ -173,14 +213,14 @@
         },
 
         /**
-         * Adjust the message chokerate based on latency
+         * Adjust the message chokerate based on _latency
          * @param serverMessage
          */
         adjustRate: function (serverMessage) {
 
-            var deltaTime = serverMessage.gameClock - this.delegate.getGameClock();
-            this.latency = deltaTime;
-            //console.log(this.latency);
+            var deltaTime = serverMessage._gameClock - this._delegate.getGameClock();
+            this._latency = deltaTime;
+            //console.log(this._latency);
         },
 
         ///// Memory
@@ -188,10 +228,10 @@
          * Clear memory
          */
         dealloc: function () {
-            this.connection.close();
-            delete this.connection;
-            delete this.messageBuffer;
-            delete this.incomingWorldUpdateBuffer;
+            this._connection.close();
+            delete this._connection;
+            delete this._messageBuffer;
+            delete this._incomingWorldUpdateBuffer;
         },
 
 
@@ -205,24 +245,24 @@
             }
 
             // Checks passed
-            this.delegate = aDelegate;
+            this._delegate = aDelegate;
         },
 
         /**
          * Determines if it's ok for the client to send a unreliable new message yet
          */
         canSendMessage: function () {
-            var isReady = (this.delegate.getGameClock() > this.lastSentTime + this.cl_updateRate);
+            var isReady = (this._delegate.getGameClock() > this._lastSentTime + this._cl_updateRate);
             return isReady;
         },
         getClientid: function () {
-            return this.clientid
+            return this._clientid
         },
         getIncomingWorldUpdateBuffer: function () {
-            return this.incomingWorldUpdateBuffer
+            return this._incomingWorldUpdateBuffer
         },
         getLatency: function () {
-            return this.latency
+            return this._latency
         },
 
         ClientNetChannelDelegateProtocol:{
@@ -234,7 +274,5 @@
 
     };
 
-
-    return ClientNetChannel;
-
+//-----------------------------------The End---------------------------------------
 })();

@@ -33,6 +33,14 @@ require("./lib/SortedLookupTable.js");
             var path = require('path');
             this._socketio = require('socket.io')(http);
 
+            this._socketio.set('transports', [
+                'websocket'
+                , 'flashsocket'
+                , 'htmlfile'
+                , 'xhr-polling'
+                , 'jsonp-polling'
+            ]);
+
             //routing
             app.get('/', function (req, res) {
                 res.sendFile(path.join(__dirname, '../../public/index.html'));
@@ -76,15 +84,15 @@ require("./lib/SortedLookupTable.js");
             
             var worldEntityDescriptionString = worldDescription.getEntityDescriptionAsString();
             var entityDescriptionObject = {
-                entities: worldEntityDescriptionString,
-                gameClock: worldDescription.gameClock,
-                gameTick: worldDescription.gameTick
+                _entities: worldEntityDescriptionString,
+                _gameClock: worldDescription._gameClock,
+                _gameTick: worldDescription._gameTick
             };
 
             // Send _clients the current world info
             this._clients.forEach(function (key, client) {
                 // Collapse delta - store the world state
-                client.entityDescriptionBuffer.push(entityDescriptionObject);
+                client._entityDescriptionBuffer.push(entityDescriptionObject);
 
                 // Ask if enough time passed, and send a new world update
                 if (client.canSendMessage(gameClock)) {
@@ -104,8 +112,8 @@ require("./lib/SortedLookupTable.js");
         onSocketConnection: function (clientConnection) {
 
             var aClient = new Client(clientConnection, this.getNextClientID());
-            // Send the first message back to the client, which gives them a clientid
-            var connectMessage = new NetChannelMessage(++this._outgoingSequenceNumber, aClient.getClientid(), true, {gameClock: this._delegate.getGameClock()});
+            // Send the first message back to the client, which gives them a _clientid
+            var connectMessage = new NetChannelMessage(++this._outgoingSequenceNumber, aClient.getClientid(), true, {_gameClock: this._delegate.getGameClock()});
             connectMessage.messageTime = this._delegate.getGameClock();
             aClient.getConnection().emit('server_connected', connectMessage);
 
@@ -126,7 +134,7 @@ require("./lib/SortedLookupTable.js");
             //this._delegate.shouldRemovePlayer(client.getClientid());
             this._clients.remove(clientConnection.id);
             client.dealloc();
-            console.log("a Client disconnected");
+            console.log("Client disconnected: "+clientConnection.id);
 
         }
         ,

@@ -5,20 +5,20 @@
 
 
     WorldEntityDescription = function (aGameInstance, allEntities) {
-        this.gameClock = aGameInstance.getGameClock();
-        this.gameTick = aGameInstance.getGameTick();
-        this.allEntities = allEntities;
+        this._gameClock = aGameInstance.getGameClock();
+        this._gameTick = aGameInstance.getGameTick();
+        this._allEntities = allEntities;
 
         // Ask each entity to create it's EntityDescriptionString
-        this.entities = [];
+        this._entities = [];
 
         return this;
     };
 
     WorldEntityDescription.prototype = {
-        entities: null,
-        gameClock: 0,
-        gameTick: 0,
+        _entities: null,
+        _gameClock: 0,
+        _gameTick: 0,
 
         /**
          * Ask each entity to create it's entity description
@@ -26,14 +26,16 @@
          * @return {String} A '|' delmited string of the current world state
          */
         getEntityDescriptionAsString: function () {
-            var len = this.allEntities.length;
+            //var len = this._allEntities.length;
             var fullDescriptionString = '';
-
-            this.allEntities.forEach(function (key, entity) {
-                var entityDescriptionString = entity.constructEntityDescription(this.gameTick);
-                fullDescriptionString += "|" + entityDescriptionString;
-            }, this);
-
+            //console.log("wait, somebody is calling me");
+            this._allEntities.forEach(function (game_character) {
+                if (game_character){
+                    var entityDescriptionString = game_character.constructEntityDescription(this._gameTick);
+                    fullDescriptionString += "|" + entityDescriptionString;
+                }
+            },this);
+            //console.log(fullDescriptionString);
             return fullDescriptionString;
         }
     };

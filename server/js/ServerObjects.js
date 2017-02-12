@@ -835,7 +835,7 @@
     Game_CharacterBase = function () {
         this.initialize.apply(this, arguments);
         return this;
-    }
+    };
 
     Object.defineProperties(Game_CharacterBase.prototype, {
         x: { get: function() { return this._x; }, configurable: true },
@@ -851,7 +851,7 @@
         this._y = 0;
         this._realX = 0;
         this._realY = 0;
-        this._moveSpeed = 3;
+        this._moveSpeed = 4;
         this._moveFrequency = 6;
         this._opacity = 255;
         this._blendMode = 0;
