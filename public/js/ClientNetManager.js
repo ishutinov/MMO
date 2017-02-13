@@ -296,13 +296,16 @@ Scene_Boot.prototype.isReady = function() {
     }
 
 };
-ClientAlias.Scene_Boot_create = Scene_Boot.prototype.create;
-Scene_Boot.prototype.create = function() {
-    ClientAlias.Scene_Boot_create.call(this);
+// ClientAlias.Scene_Boot_create = Scene_Boot.prototype.create;
+// Scene_Boot.prototype.create = function() {
+//     ClientAlias.Scene_Boot_create.call(this);
+// };
+ClientAlias.SceneManager_initialize = SceneManager.initialize;
+SceneManager.initialize = function() {
+    ClientAlias.SceneManager_initialize.call(this);
     $clientMannager = new ClientNetMannager();
+    //console.log("FUCK");
 };
-
-
 
 
 Game_Event.prototype.update = function() {

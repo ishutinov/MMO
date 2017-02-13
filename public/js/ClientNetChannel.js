@@ -26,7 +26,8 @@
         _reliableBuffer: null,				// We sent a 'reliable' message and are waiting for acknowledgement that it was sent
 
         setupSocketIO: function () {
-            this._socketio = io.connect("http://localhost:6666",{transports: ['websocket', 'xhr-polling', 'jsonp-polling'], reconnect: false, rememberTransport: false});
+            this._socketio = io.connect("http://127.0.0.1:6666",{transports: ['websocket', 'xhr-polling', 'jsonp-polling'], reconnect: false, rememberTransport: false});
+            
             var self = this;
             this._socketio.on('connect', function(){
                 self.onSocketConnect();
